@@ -37,7 +37,7 @@ public class Runner {
         //211 11Madison
         RequestSender rs = new RequestSender();
 
-        RequestSender.RestaurantList list = rs.requestRestaurants();
+        RequestSender.RestaurantList list = rs.requestRestaurants("http://www.opentable.com/new-york-city-restaurants");
         String name = list.get(restaurantId);
         if (name == null) {
             System.err.println("Restaurant with id " + restaurantId + " not found");

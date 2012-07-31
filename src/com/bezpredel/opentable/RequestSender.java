@@ -103,8 +103,54 @@ public class RequestSender
         return res;
     }
 
-    public RestaurantList requestRestaurants() throws IOException {
-        String input = getUrlContents("http://www.opentable.com/new-york-city-restaurants");
+    public Map<String, String> requestLocales() throws IOException {
+        String input = getUrlContents("http://www.opentable.com/city.aspx?s=NY");
+        int ind1 = input.indexOf("<select");
+        if(ind1==-1) return null;
+        int ind2 = input.indexOf("</select>", ind1);
+
+        String block1 = input.substring(ind1, ind2);
+        Pattern ITEM1 = Pattern.compile("<option value=\"(\\w+)\"[^>]*>([^<]*)</option>");
+        Matcher matcher = ITEM1.matcher(block1);
+
+        TreeMap<String, String> result = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
+
+        while(matcher.find()) {
+            String name = matcher.group(2);
+            String url = "http://www.opentable.com/city.aspx?s=" + matcher.group(1);
+
+            result.put(name, url);
+        }
+
+        return result;
+    }
+
+    public Map<String, String> getAreasForLocale(String name, String url) throws IOException {
+        Pattern ITEM = Pattern.compile("<a href=\"?([^>]*)\"?>([^<]*) restaurants</a>");
+        String input = getUrlContents(url);
+        int ix = 0;
+        TreeMap<String, String> result = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
+        while(true) {
+            int start_ix = input.indexOf("<div class=\"arealist\">", ix);
+            if(start_ix < 0) break;
+
+            int end_ix = ix = input.indexOf("</div>", start_ix);
+
+            String body = input.substring(start_ix, end_ix);
+            Matcher mm = ITEM.matcher(body);
+            while(mm.find()) {
+                String lName = mm.group(2);
+                String lURL = "http://www.opentable.com/" + mm.group(1);
+
+                result.put(lName, lURL);
+            }
+        }
+
+        return result;
+    }
+
+    public RestaurantList requestRestaurants(String url) throws IOException {
+        String input = getUrlContents(url);
 
         Matcher matcher = NAMES_PATTERN.matcher(input);
 
@@ -139,6 +185,11 @@ public class RequestSender
             }
             return map;
         }
+    }
+
+
+    public static class LocaleList {
+
     }
 
 }

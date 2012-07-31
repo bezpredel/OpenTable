@@ -11,6 +11,7 @@ import javax.swing.table.TableColumnModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.IOException;
 import java.util.*;
 
 
@@ -24,18 +25,21 @@ public class MainFrame extends JFrame {
     private final Logger logger;
     private final Defaults defaults;
     private final AvailabilityPanel availabilityPanel;
+    private final RequestSender requestSender;
 
     private ActiveTask selectedTask;
 
-    public MainFrame(RequestSender.RestaurantList list, TaskRunner taskRunner, Logger logger, Defaults defaults, AvailabilityPanel availabilityPanel) {
-        super("OpenTable checker");
+    public MainFrame(RequestSender requestSender, TaskRunner taskRunner, Logger logger, Defaults defaults, AvailabilityPanel availabilityPanel) {
+        super(makeTitle(defaults));
         this.taskRunner = taskRunner;
         this.defaults = defaults;
         this.logger = logger;
         this.availabilityPanel = availabilityPanel;
+        this.requestSender = requestSender;
 
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        restaurants = initRestaurantsList(list, defaults);
+
+        restaurants = initRestaurantsList(requestSender, defaults);
         times = initTimes(defaults);
         activeTasksTableModel = new ActiveTasksTableModel();
         currentlyWatchedTable = initActiveTable(activeTasksTableModel);
@@ -74,11 +78,16 @@ public class MainFrame extends JFrame {
         this.setSize(800, 500);
     }
 
+    private static String makeTitle(Defaults defaults) {
+        return "OpenTable checker - " + defaults.getLocaleName();
+    }
+
     private JMenuBar initMenu() {
         JMenuBar menuBar = new JMenuBar();
-        JMenu fileMenu = new JMenu("File");
+        JMenu fileMenu = new JMenu("Settings");
         JMenuItem smtpSettingsItem = new JMenuItem("SMTP Settings");
         JMenuItem delaySettingsItem = new JMenuItem("Delay Settings");
+        JMenuItem regionItem = new JMenuItem("Change Region");
 
         smtpSettingsItem.addActionListener(
             new ActionListener() {
@@ -97,10 +106,33 @@ public class MainFrame extends JFrame {
                 }
             }
         );
+
+        regionItem.addActionListener(
+                new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        showRegionSettings();
+                    }
+                }
+        );
         fileMenu.add(smtpSettingsItem);
         fileMenu.add(delaySettingsItem);
+        fileMenu.add(regionItem);
         menuBar.add(fileMenu);
         return menuBar;
+    }
+
+    private void showRegionSettings() {
+        boolean isSuccessful = LocaleSettingsDialog.showDialog(this, defaults, requestSender);
+        if(isSuccessful) {
+            changeLocale();
+        }
+    }
+
+    private void changeLocale() {
+        setTitle(makeTitle(defaults));
+        restaurants.setModel(new DefaultComboBoxModel());
+        populateRestaurants(restaurants, requestSender, defaults);
     }
 
     private void showDelaySettings() {
@@ -263,17 +295,9 @@ public class MainFrame extends JFrame {
         }
     }
 
-    private JComboBox initRestaurantsList(RequestSender.RestaurantList list, final Defaults defaults) {
+    private JComboBox initRestaurantsList(RequestSender requestSender, final Defaults defaults) {
         final JComboBox c = new JComboBox();
-        Integer def = defaults.getDefaultRestaurant();
-
-        for (Map.Entry<String, Integer> entry : list.getAll().entrySet()) {
-            c.addItem(new Restaurant(entry.getKey(), entry.getValue()));
-
-            if (def != null && def.equals(entry.getValue())) {
-                c.setSelectedIndex(c.getModel().getSize() - 1);
-            }
-        }
+        populateRestaurants(c, requestSender, defaults);
 
         c.addActionListener(new ActionListener() {
             @Override
@@ -285,5 +309,24 @@ public class MainFrame extends JFrame {
             }
         });
         return c;
+    }
+
+    private void populateRestaurants(JComboBox c, RequestSender requestSender, Defaults defaults) {
+        Integer def = defaults.getDefaultRestaurant();
+        RequestSender.RestaurantList list;
+        try {
+            list = requestSender.requestRestaurants(defaults.getLocaleURL());
+        } catch (IOException e) {
+            logger.log("Failed to load restaurant list", "");
+            return;
+        }
+
+        for (Map.Entry<String, Integer> entry : list.getAll().entrySet()) {
+            c.addItem(new Restaurant(entry.getKey(), entry.getValue()));
+
+            if (def != null && def.equals(entry.getValue())) {
+                c.setSelectedIndex(c.getModel().getSize() - 1);
+            }
+        }
     }
 }

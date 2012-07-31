@@ -16,6 +16,8 @@ public class Defaults {
     private static final String DEF_PASSWORD = "MAIL_PASSWORD";
     private static final String DEF_DELAY = "DELAY";
 
+    private static final String DEF_LOCALE_NAME = "LOCALE_NAME";
+    private static final String DEF_LOCALE_URL = "URL";
 
     private final Preferences prefs;
 
@@ -107,5 +109,20 @@ public class Defaults {
 
     public void setDefaultDelay(int val) {
         prefs.put(DEF_DELAY, Integer.toString(val));
+    }
+
+
+
+    public void setLocale(String locale, String url) {
+        prefs.put(DEF_LOCALE_NAME, locale);
+        prefs.put(DEF_LOCALE_URL, url);
+    }
+
+    public String getLocaleName() {
+        return prefs.get(DEF_LOCALE_NAME, "New York, New York").trim();
+    }
+
+    public String getLocaleURL() {
+        return prefs.get(DEF_LOCALE_URL, "http://www.opentable.com/new-york-city-restaurants").trim();
     }
 }

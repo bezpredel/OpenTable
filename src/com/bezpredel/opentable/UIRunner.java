@@ -36,21 +36,21 @@ public class UIRunner {
     private static void startup() throws Exception {
         //21790 Babbo Ristorante
         //211 11Madison
-        RequestSender rs = new RequestSender();
-
-        RequestSender.RestaurantList list = rs.requestRestaurants();
         Defaults defaults = new Defaults();
+        RequestSender requestSender = new RequestSender();
+
+
         Logger logger = new Logger();
         AvailabilityPanel availabilityPanel = new AvailabilityPanel();
 
         TaskRunner taskRunner = new TaskRunner(
-                rs,
+                requestSender,
                 null,
                 logger
         );
         taskRunner.setDelay(defaults.getDefaultDelay());
 
-        MainFrame mainFrame = new MainFrame(list, taskRunner, logger, defaults, availabilityPanel);
+        MainFrame mainFrame = new MainFrame(requestSender, taskRunner, logger, defaults, availabilityPanel);
         mainFrame.setVisible(true);
 
         if (!defaults.hasHostAndPort()) {
